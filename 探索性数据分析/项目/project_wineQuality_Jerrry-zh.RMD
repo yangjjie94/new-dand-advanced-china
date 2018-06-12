@@ -1,0 +1,263 @@
+Project 3
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# 加载你最终使用的所有组件
+# 在这个代码块的分析中。
+
+# 注意，在这个代码块中，将参数 "echo" 设为假。
+# This prevents the code from displaying in the knitted HTML output.这可以避免代码混入 HTML 输出显示。
+# 应当在文件中，对所有代码块设为 echo=FALSE 。
+
+library(ggplot2)
+library(GGally)
+library(scales)
+library(memisc)
+library(gridExtra)
+library(grid)
+library(RColorBrewer)
+library(bitops)
+library(RCurl)
+library(reshape2)
+library(dplyr)
+library(knitr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# 加载数据
+ww <- read.csv("wineQualityWhites.csv")
+wr <- read.csv("wineQualityReds.csv")
+```
+
+```{r echo=FALSE,include=FALSE}
+wr$color = 'red'
+names(wr)
+```
+
+```{r echo=FALSE,include=FALSE}
+ww$color = 'white'
+names(ww)
+```
+
+```{r echo=FALSE, include=FALSE}
+data <- rbind(wr, ww)
+str(data)
+```
+
+
+
+异常值多出现在上四分位后，比如fixed.acidity、volatile.acidity、citric.acid、residual.sugar、chlorides、free.sulfur.dioxide、total.sulfur.dioxide、sulphates，发现主要是酒的风味物质差别很大，物性的差值就很小。
+
+```{r  echo=FALSE, scatter_plot_matrix}
+ggpairs(data,
+        columns=c(2:14),
+        axisLabels = 'internal',
+        lower = list(continuous = wrap("points", shape = I('.'))),
+        upper = list(combo = wrap("box", outlier.shape = I('.')))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r echo=FALSE}
+summary(data)
+```
+
+
+# 单变量绘图选择
+```{r echo=FALSE, Univariate_Plots}
+ggplot(aes(quality, fill = color), data = data) +
+  geom_bar(alpha = 0.5) + 
+  ggtitle("quality scores")
+```
+
+发现上图有点像对数正态分布，我们rescale一下y轴
+
+```{r echo=FALSE}
+ggplot(aes(quality, fill = color), data = data) +
+  geom_bar(alpha = 0.5,position = 'dodge') + 
+  scale_y_log10() +
+  ggtitle("quality scores")
+```
+
+# 单变量分析
+
+### 你的数据集结构是什么？
+这个整齐的数据集包含1,599种红酒，以及11个关于酒的化学成分的变量。至少3名葡萄酒专家对每种酒的质量进行了评分，分数在0（非常差）和10（非常好）之间。  
+输入变量  
+
+- 固定酸度（酒石酸 - g / dm^3）
+- 挥发性酸度（醋酸 - g / dm^3），在高浓度时会产生令人不愉快的醋味
+- 柠檬酸（g / dm^3），量小，给酒的加入新鲜度和风味
+- 剩余糖量（g / dm^3）），1g/L含糖量的酒很少见，45g/L含糖量的酒认为是甜的
+- 氯化物（氯化钠 g / dm^3）），咸味
+- 自由二氧化硫（mg / dm^3），阻止微生物生长和酒氧化
+- 总二氧化硫（mg / dm^3），低浓度下，SO2很难检出；自由SO2浓度在高于50 ppm后会闻起来和尝起来很明显
+- 密度（g / cm^3），取决于酒精体积比例和糖含量
+- pH，大多数位于3-4
+- 硫酸盐（硫酸钾 - g / dm^3），添加剂，抗微生物和抗氧化剂。
+- 酒精度（体积分数 %）
+
+### 你的数据集内感兴趣的主要特性有哪些？
+我感兴趣的主要特性有酒精含量、residual.sugar（甜味）
+
+### 你认为数据集内哪些其他特征可以帮助你探索兴趣特点？
+红酒和白酒的区别、风味物质含量（chlorides（咸味）、vol.acid（酸味）、total.sulfur.dioxide（刺激性气味），密度因为主要和酒精度和甜度相关（在上图中也可以看到）
+
+### 根据数据集内已有变量，你是否创建了任何新变量？
+将free.sulfur.dioxide和total.sulfur.dioxide的单位改大成 g / dm^3；合并了红酒和白酒数据集，并添加了类型变量color
+### 在已经探究的特性中，是否存在任何异常分布？你是否对数据进行一些操作，如清洁、调整或改变数据的形式？如果是，你为什么会这样做？
+发现在fixed.acidity, volatile.acidity, citric.acid, residual.sugar, chlorides, free.sulfur.dioxide， total.sulfur.dioxide, sulphates这几个变量都存在异常大值，在以后相关的绘图中使用xlim = c(0, quantile(diamonds$carat, 0.99))把极端大值修饰掉。
+
+
+# 双变量绘图选择
+```{r echo=FALSE, Bivariate_Plots}
+ggplot(data, aes(x = alcohol, y = quality)) +
+  #scale_y_log10() +
+  geom_point(alpha = 0.03,position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  ggtitle('quality ~ alchohol')
+```
+
+```{r echo=FALSE}
+ggplot(data, aes(x = data$density, y = quality)) +
+  #scale_y_log10() +
+  geom_point(alpha =0.03, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  xlim(quantile(data$density, 0), quantile(data$density, 0.99)) +
+  ggtitle('quality ~ density')
+
+
+```
+
+```{r echo=FALSE}
+ggplot(data, aes(x = data$chlorides, y = quality)) +
+  #scale_y_log10() +
+  geom_point(alpha =0.03, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  xlim(quantile(data$chlorides, 0), quantile(data$chlorides, 0.95)) +
+  ggtitle('quality ~ chlorides')
+
+```
+
+```{r echo=FALSE}
+ggplot(data, aes(x = data$volatile.acidity, y = quality)) +
+  #scale_y_log10() +
+  geom_point(alpha =0.03, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  xlim(quantile(data$volatile.acidity, 0), quantile(data$volatile.acidity, 0.95)) +
+  ggtitle('quality ~ volatile.acidity')
+
+```
+
+
+# 双变量分析
+
+### 探讨你在这部分探究中观察到的一些关系。这些感兴趣的特性与数据集内其他特性有什么区别？
+质量和酒精度存在一定的正相关性，酒精度越高，评分也可能更高。明显相关性如density、vol.acid，与质量评分呈现负相关。
+
+### 你是否观察到主要特性与其他特性之间的有趣关系？
+密度与酒精含量和含糖量存在强的相关性，
+
+### 你发现最强的关系是什么？
+和质量相关最强的关系是和酒精度。其余依次是density、chlorides、volatile.acidity。
+
+
+
+# 多变量绘图选择
+
+```{r echo=FALSE, Multivariate_Plots}
+ggplot(data, aes(x = alcohol, y = quality, color = color)) + 
+  #scale_y_log10() +
+  geom_point(alpha =0.05, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  xlim(quantile(data$alcohol, 0), quantile(data$alcohol, 0.99)) +
+  ggtitle('quality ~ alchohol, color')
+```
+
+```{r echo=FALSE}
+ggplot(data[data$chlorides < quantile(data$chlorides,0.95), ], 
+       aes(x = alcohol, y = quality, color = chlorides)) + 
+  #scale_y_log10() +
+  geom_point(alpha =0.05, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  #xlim(quantile(data$alcohol, 0), quantile(data$alcohol, 0.99)) +
+  ggtitle('quality ~ alchohol, chlorides')
+```
+
+
+```{r echo=FALSE}
+ggplot(data[data$volatile.acidity < quantile(data$volatile.acidity,0.95), ], 
+       aes(x = alcohol, y = quality, color = volatile.acidity)) + 
+  #scale_y_log10() +
+  geom_point(alpha =0.05, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  #xlim(quantile(data$volatile.acidity, 0), quantile(data$alcohol, 0.99)) +
+  ggtitle('quality ~ alchohol, volatile.acidity')
+```
+
+```{r echo=FALSE}
+ggplot(data[data$total.sulfur.dioxide < quantile(data$total.sulfur.dioxide,0.95), ], 
+       aes(x = alcohol, y = quality, color = total.sulfur.dioxide)) + 
+  #scale_y_log10() +
+  geom_point(alpha =0.05, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  #xlim(quantile(data$volatile.acidity, 0), quantile(data$alcohol, 0.99)) +
+  ggtitle('quality ~ alchohol, total.sulfur.dioxide')
+```
+
+
+
+
+# 多变量分析
+
+###  探讨你在这部分探究中观察到的一些关系。通过观察感兴趣的特性，是否存在相互促进的特性？
+红酒和白葡萄酒在质量和酒精含量的关系上表现相似。相同的酒精含量下，白葡萄酒的评分更高。其他的几种风味物质（chlorides、volatile_acidity、total.sulfur.dioxide）的影响不大。
+### 这些特性之间是否存在有趣或惊人的联系呢？
+
+### 选项：你是否创建过数据集的任何模型？讨论你模型的优缺点。
+
+------
+
+# 定稿图与总结
+
+### 绘图一
+```{r echo=FALSE, Plot_One}
+ggplot(aes(quality, fill = color), data = data) +
+  geom_bar(alpha = 0.5,position = 'dodge') + 
+  scale_y_log10() +
+  ggtitle("quality scores")
+```
+
+### 描述一
+葡萄酒质量的分布满足对数正态分布。
+
+### 绘图二
+```{r echo=FALSE, Plot_Two}
+ggplot(data, aes(x = alcohol, y = quality)) +
+  geom_point(alpha = 0.03,position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  ggtitle('quality ~ alchohol')
+```
+
+### 描述二
+酒精含量是对葡萄酒质量影响最大的一个因素，R^2 = 0.436，酒精含量越高，葡萄酒质量一般越高。
+
+### 绘图三
+```{r echo=FALSE, Plot_Three}
+ggplot(data, aes(x = alcohol, y = quality, color = color)) + 
+  #scale_y_log10() +
+  geom_point(alpha =0.05, position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  xlim(quantile(data$alcohol, 0), quantile(data$alcohol, 0.99)) +
+  ggtitle('quality ~ alchohol, color')
+```
+
+### 描述三
+不同的酒的品种（红、白）会对酒精和酒质量的关系产生明显的影响。同样的酒精含量下，白葡萄酒的评分往往更高。
+固定酒精含量，相同风味物质可能对应不同的质量评分，方差在不同酒精含量下相近。
+
+------
+
+# 反思
+我们探究了1,599种葡萄酒的酒精度和风味物质对评分的影响，其中酒精是最重要的影响因素，相同酒精含量，不同风味物质对酒的质量评分的影响很小，排除极端值情况，不具有特定的趋势，说明个人对于红酒口味的感受和评分是非常主观的。

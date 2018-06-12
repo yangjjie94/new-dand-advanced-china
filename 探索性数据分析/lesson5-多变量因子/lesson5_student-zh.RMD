@@ -1,0 +1,452 @@
+第 5 课
+========================================================
+
+### 多变量数据
+注释：
+
+```{r}
+library(ggplot2)
+library(dplyr)
+list.files()
+pf <- read.delim("pseudo_facebook.tsv")
+```
+
+
+***
+
+### 年龄标记为彩色的自我感知关注量
+注释：
+
+***
+
+### 第三个定性变量
+注释：
+
+```{r Third Qualitative Variable}
+ggplot(aes(x = gender, y = age),
+       data = subset(pf, !is.na(gender))) +
+  geom_histogram()
+```
+
+```{r}
+ggplot(aes(x = gender, y = age),
+       data = subset(pf, !is.na(gender))) +
+  geom_boxplot()+
+  stat_summary(fun.y = mean, geom = 'point', shape=4)
+```
+
+```{r}
+ggplot(aes(x = age, y = friend_count),
+       data = subset(pf, !is.na(gender))) +
+  geom_line(aes(color = gender), 
+            stat = 'summary', 
+            fun.y = median)
+```
+
+median(as.numeric(var))。
+
+在使用 dplyr 包中的 group_by() 函数时，可以包含多个变量，以分拆数据框。
+
+new_groupings <- group_by(data, variable1, variable2)
+或
+using chained commands...使用这个命令：
+new_data_frame <- data_frame %.%
+  group_by(variable1, variable2) %.%
+
+***
+
+### 绘制条件总结
+注释：
+
+```{r Plotting Conditional Summaries}
+ggplot(aes(x = age, y = friend_count),
+              data = subset(pf, !is.na(gender))) +   geom_line(aes(color = gender), stat = 'summary', fun.y = median)
+```
+
+你的代码应类似于我们首次用来绘制图形的代码，并且无需使用 stat 和 fun.y 参数。
+
+```{r Plotting Conditional Summaries}
+
+
+
+```
+
+
+
+***
+
+### 思考比率
+注释：
+上图男女数量的比较是不合理的，因为男女总数可能不同，
+***
+
+### 又宽又长的格式
+注释：
+
+```{r}
+install.packages("tidyr") # only need to run this once
+library(tidyr) 
+spread(subset(pf.fc_by_age_gender, 
+              select = c('gender','age', 'median_friend_count')), 
+       gender, median_friend_count)
+```
+
+
+***
+
+### 改变数据 reshape重塑数据
+注释：
+
+```{r}
+install.packages('reshape2')
+library(reshape2)
+```
+
+```{r}
+pf.fc_by_age_gender.wide <- dcast(pf.fc_by_age_gender,age ~ gender, value.var = 'median_friend_count')
+
+head(pf.fc_by_age_gender.wide)
+```
+
+将变量名指定到 tovalue.var 时，在变量名两侧使用引号非常重要。
+
+我们还可以使用 dplyr 和 tidyr 包创建相似的数据框：
+```{r}
+pf.fc_by_age_gender.wide <-     subset(pf.fc_by_age_gender[c('age', 'gender', 'median_friend_count')],!is.na(gender)) %>%
+    spread(gender, median_friend_count) %>%
+    mutate(ratio = male / female)
+
+head(pf.fc_by_age_gender.wide)
+```
+
+
+***
+
+### 比率图
+注释：
+
+```{r Ratio Plot}
+ggplot(aes(x = age, y = female / male),
+       data = pf.fc_by_age_gender.wide) +
+  geom_line() + 
+  geom_hline(yintercept = 1, alpha = 0.3, linetype=2)
+```
+
+***
+
+### 第三个定性变量
+注释：
+在前面的示例中，我们在查看我们的数据不同不同分类性别变量的年龄和好友数，通常，颜色或 形状往往属于美学范畴，以表示分类变量的这些变化。但是如果我们查看另一个值变量的年龄和好友数量怎么办？
+比如用户使用Facebook的时间或从注册Facebook后的天数与年龄的关系，都与好友数有关系，
+展示一种所有四个变量 好友数friend_count，年龄，性别和期限使用二维显示的方法，如散点图，我们可以弯曲bend其中一个定量变量，并比较这些弯曲，在这种情况下，我们可以按照用户加入年份将用户编组，因此，让我们在DataFrame内创建一个称谓year_joined的新变量，该变量将表示我们的用户首次加入Facebook的年份。
+接下来你将创建这个新变量，你需要使用变量期限tenure并使用2014作为基准年，
+一个常见的错误是使用 tenure，而不是 pf$tenure 或 with(pf, tenure...)。请记住：你需要访问数据框内的变量。
+
+
+```{r Third Quantitative Variable}
+pf$year_joined <- floor(2014 - pf$tenure/365)
+summary(pf$year_joined)
+table(pf$year_joined)
+```
+
+***
+
+### 切割一个变量
+注释：
+
+```{r Cut a Variable}
+pf$year_joined.bucket <- cut(pf$year_joined, c(2004, 2009, 2011, 2012, 2014))
+```
+
+***
+
+### 同时绘制
+注释：
+
+```{r Plotting it All Together}
+ggplot(aes(x = age, y = friend_count), 
+       data = subset(pf, !is.na(year_joined.bucket))) +
+  geom_line(aes(color = year_joined.bucket), 
+            stat = 'summary', 
+            fun.y = median)
+```
+
+***
+
+### 绘制总平均值
+注释：
+
+```{r Plot the Grand Mean}
+
+ggplot(aes(x = age, y = friend_count), 
+       data = subset(pf, !is.na(year_joined.bucket))) +
+  geom_line(aes(color = year_joined.bucket), 
+            stat = 'summary', 
+            fun.y = mean) +
+  geom_line(stat = 'summary', 
+            fun.y = mean, 
+            linetype = 2)
+```
+
+***
+
+由于调节加入年份的每个分组之后继续保持一般模式，我们可能因此更有信息，该观察值不只是用户积累好友所需时间的人为产物。
+我们也可以调查使用期与与好友数的比例，例如，我们可以看到自从用户开始使用服务以来，它们每天有多少好友，让我们看看你是否可以创建该比例的总结，以显示自从用户开始使用Facebook以来，用户每天有多少好友，划分数据子集。这样你只需考虑至少有一天使用权的用户，一旦你完成该总结，便可以回答这两个问题。
+
+### 交友率
+注释：
+
+```{r Friending Rate}
+with(subset(pf, tenure >= 1), summary(friend_count / tenure))
+```
+
+在这里，我们需要总结好友率。我们可以使用命令和数据子集。因此我们只考虑至少有一天期限的用户，现在我们只需要总结好友数除以期限，这为我们提供自从用户激活以来每天的好友数。
+
+从图中，我们看到中位数率median rate约为0.22，且最大速率为417，现在由于第三个四分位数仅为约0.5，考虑到我们的数据，这绝对是一个异常值。
+
+***
+
+### 开始交友
+注释：
+
+平均交友率是什么？
+
+最大交友率是什么？
+
+我们已经通过利用变量性别和期限，了解更多关于年龄与好友数之间的关系，我们已经看到用户注册网站的时间越长，会有更多横跨不同年龄的好友，现在，这让我想知道对于不同的组，好友请求friend_requests相同还是不同，新用户是否继续进行交友活动？或者有更多使用时长的用户开始建立更多友谊？让我们通过图表进行研究。
+
+想让你创建建立友谊friendships initiated per day和使用时长tenure之间关系的线图。你需要使用年龄、使用时长、建立的友谊和yera_joined.bucket，一条线中每个部分的颜色，应该与year_joined的每个料斗相对应，并需要划分数据子集，以只考虑至少有一天使用时长的用户，
+
+```{r Friendships Initiated}
+ggplot(aes(x = tenure, y = friendships_initiated / tenure), 
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket))
+```
+
+***
+
+### 再次访问方差权衡
+注释：
+
+```{r Bias-Variance Tradeoff Revisited}
+
+ggplot(aes(x = tenure, y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary',
+            fun.y = mean)
+
+ggplot(aes(x = 7 * round(tenure / 7), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = "summary",
+            fun.y = mean)
+
+ggplot(aes(x = 30 * round(tenure / 30), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = "summary",
+            fun.y = mean)
+
+ggplot(aes(x = 90 * round(tenure / 90), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = "summary",
+            fun.y = mean)
+
+```
+
+
+### 偏差-方差权衡，用geom_smooth
+随着组距bin size增加，我们看到图中噪音减少，因为我们对新的使用时间值有更多数据点，调整我们的估计值。
+在第四课中，我们引入平滑器，因此，这里不使用gm_line。
+我希望在你的代码中使用gm平滑，向该图添加平滑器，
+
+```{r}
+ggplot(aes(x=tenure, y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_smooth(aes(color = year_joined.bucket))
+```
+
+我们需要将几何线geom_line变更为几何平滑geom_smooth，还需要去掉fun.y参数和stat参数，仍然标尺为yearjoined.bucket分配颜色。
+
+在图中，我们仍然会看到新好友数量随着使用时间增加而下降。
+
+***
+
+### Sean 对 NFL 粉丝情绪的研究
+注释：
+
+
+***
+
+###  Yogurt 数据集简介
+注释：
+时序，家庭，购买时间和数量
+
+```{r}
+yo <- read.csv('yogurt.csv')
+str(yo)
+
+# Change the id from an int to a factor
+yo$id <- factor(yo$idL)
+str(yo)
+```
+
+***
+
+### 再次访问直方图
+注释：
+```{r Histograms Revisited}
+qplot(data = yo, x = price, fill = I('#F79420'))
+```
+
+
+离散型，相邻的价格没有观察到。如果我们对价格敏感度感兴趣，我们绝对要考虑这些价格的变化是什么样的
+
+```{r Histograms Revisited}
+qplot(data = yo, x = price, fill = I('#F79420'),binwidth = 10)
+```
+
+对于离散型的，我们还需要注意是否选择了可能掩盖这种离散型的不同分组距度，如果我选择带宽等于10，我们就会错过相邻价格一些空白空间的观测值。所以，对于此非常离散的数据，大组距会产生一个有偏差的模型。
+
+
+***
+
+### 购买数量
+注释：
+
+```{r Number of Purchases}
+summary(yo$price)
+```
+
+
+```{r Number of Purchases}
+length(yo$price)
+```
+
+```{r Number of Purchases}
+unique(yo$price)
+```
+
+```{r Number of Purchases}
+table(yo$price)
+```
+
+建立一个新变量，合并三种口味的酸奶，表明每次购买或每个家庭购买的数量，到dataFrame中，变量名为`all.purchases`。达成这个任务将使用 `transform`函数，
+```{r}
+yo <- transform(yo, all.purchases = strawberry + blueberry + pina.colada + plain + mixed.berry)
+summary(yo$all.purchases)
+
+# alternate verbose form
+yo$all.purchases = yo$strawberry + yo$blueberry + yo$pina.colada + yo$plain + yo$mixed.berry
+```
+
+
+***
+
+### 一段时期的价格，随时间变化的价格
+注释：
+
+```{r Prices over Time}
+ggplot(aes(x = time, y = price), data = yo) + 
+  geom_jitter(alpha = 1/4, shape = 21, fill = I("#F79420"))
+```
+
+可以看到价格随着时间增加而上升，偶尔会有低价的离散点，可能是商家的打折券或者优惠政策导致的。
+***
+
+### 抽样观察
+注释：
+子样本，随机选择16个家庭并仔细观察，观察他们购买多件物品的频率和数量
+***
+
+### 观察家庭的样本
+
+```{r Looking at Sample of Households}
+# set the seed for reproducible results
+library(dplyr)
+set.seed(4230)
+sample.ids <- sample(levels(yo$id), 16)
+
+ggplot(aes(x = time , y = price), 
+       data = subset(yo, id %in% sample.ids)) +
+  facet_wrap( ~ id) + 
+  geom_line() + 
+  geom_point(aes(size = all.purchases), pch = 1)
+```
+
+***
+
+### 交叉分组数据的缺点
+注释：
+
+***
+
+### 许多变量
+注释：
+
+***
+
+### 散点图矩阵
+注释：
+
+```{r}
+install.packages('GGally')
+install.packages('reshape2')
+library(GGally)
+library(reshape2)
+theme_set(theme_minimal(20))
+pf <- read.delim("pseudo_facebook.tsv")
+
+# set the seed for reproducible results
+set.seed(1836)
+pf_subset <- pf[, c(2:15)]
+names(pf_subset)
+ggpairs(pf_subset[sample.int(nrow(pf_subset), 1000), ])
+```
+
+
+***
+
+### 更多变量
+注释：
+```{r}
+nci <- read.table('nci.tsv')
+
+# changing the colnames to produce a nicer plot
+colnames(nci) <- c(1:64)
+
+```
+
+
+***
+
+### 热点图
+注释：
+
+```{r}
+nci <- read.table("nci.tsv")
+colnames(nci) <- c(1:64)
+```
+
+```{r}
+nci.long.samp <- melt(as.matrix(nci[1:200,]))
+names(nci.long.samp) <- c("gene", "case", "value")
+head(nci.long.samp)
+
+ggplot(aes(y = gene, x = case, fill = value),
+  data = nci.long.samp) +
+  geom_tile() +
+  scale_fill_gradientn(colours = colorRampPalette(c("blue", "red"))(100))
+```
+
+***
+
+### 分析三个及三个以上变量
+思考：
+
+***
+
+点击 **KnitHTML** 查看你的成果和这节课的 html 页面、
+答案和注释！

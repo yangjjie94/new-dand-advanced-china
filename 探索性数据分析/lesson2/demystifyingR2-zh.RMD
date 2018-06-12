@@ -24,13 +24,16 @@ summary(mtcars)
   行驶公里数超过 23 英里/加仑的汽车。将它保存在新的数据框中，
   命名为效率。
 ```{r}
-
+efficiency <- mtcars[mtcars$mpg>23,]
+# subset(mtcars, mpg>23)
+head(efficiency)
+dim(efficiency)
 ```
 
 3. 多少辆汽车的行驶公里数超过 23 英里/加仑呢？使用你在 demystifying.R 中学到的知识，
   回答这个问题。
 ```{r}
-
+dim(efficiency)
 ```
 
 4. 我们也使用逻辑运算符，查找哪辆车
@@ -65,13 +68,14 @@ subset(mtcars, mpg < 14 | disp > 390)
 
 6. 将行驶 1/4 公里所花时间小于或等于
   16.90 秒的汽车，输出到控制台。
-```{r}
-
+```{r }
+subset(mtcars, qsec <= 16.90)
 ```
 
 7. 将重量低于 2000 磅 (重量单位为 lb/1000) 的汽车子集保存为变量 lightCars。输出汽车数量和子集到控制台。
 ```{r}
-
+lightCars <- subset(mtcars, wt < 2)
+lightCars
 ```
 
 8. 你也可以在数据框中创建新的变量。例如，
@@ -90,6 +94,7 @@ mtcars$year <- 1974
 在前面加上负号。
 ```{r}
 mtcars <- subset(mtcars, select = -year)
+?subset
 ```
 
 注意，我们回到数据框中的 11 个变量。
@@ -103,6 +108,7 @@ mtcars$year <- c(1973, 1974)
 
 从数据集中舍弃变量年份 (year)。
 ```{r}
+mtcars <- subset(mtcars, select = -year)
 
 ```
 

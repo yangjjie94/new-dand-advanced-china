@@ -7,12 +7,9 @@
 # 运行代码。你应该看到 “udacious” 出现在工作区中。
 
 udacious <- c("Chris Saden", "Lauren Castellano",
-
-​              "Sarah Spikes","Dean Eckles",
-
-​              "Andy Brown", "Moira Burke",
-
-​              "Kunal Chawla")
+              "Sarah Spikes","Dean Eckles",
+              "Andy Brown", "Moira Burke",
+              "Kunal Chawla")
 
 # 你应该在 '环境' 中看到类似 “chr [1：7]”，
 # 或 '工作区' 选项卡. 这是因为你创建了一个 '向量'
@@ -56,12 +53,9 @@ numbers
 # 并运行代码。记住一定要使用引号。
 
 udacious <- c("Chris Saden", "Lauren Castellano",
-
-​              "Sarah Spikes","Dean Eckles",
-
-​              "Andy Brown", "Moira Burke",
-
-​              "Kunal Chawla", YOUR_NAME)
+              "Sarah Spikes","Dean Eckles",
+              "Andy Brown", "Moira Burke",
+              "Kunal Chawla", YOUR_NAME)
 
 # 注意 R 如何在工作区更新 'udacious'。
 
@@ -76,11 +70,9 @@ mystery = nchar(udacious)
 mystery
 
 # 你刚刚创建了一个名为 mystery 的新向量。你认为在向量中
-
 # 含有什么？（向下滚动以获得答案）
 
 # Mystery 是一个包含字符数的向量
-
 # 含有每个在 Udacious 中的名字，包括你的名字。
 
 # 4. 运行以下这行代码。
@@ -88,21 +80,14 @@ mystery
 mystery == 11
 
 # 这里我们得到一个逻辑（或布尔）向量
-
 # 它告诉我们矢量中的哪些位置或索引包含正好有
-
 # 11个字符的名称。
 
 # 5.让我们使用这个布尔向量，mystery，在我们的 udacious 向量中
-
 # 出现子集。你认为运行下面的代码行时，
-
 # 结果会是什么？
-
 # 在运行下一行代码之前考虑输出。
-
 # 请注意代码中的括号。括号通常
-
 # 在 R 中用于子集
 
 udacious[mystery == 11]
@@ -110,47 +95,29 @@ udacious[mystery == 11]
 # 向下滚动以获取答案
 
 # 这是你的 Udacious 讲师的课程！
-
 # (如果你足够幸运，你可能会在输出
-
 # 中有 11 个字符 YOUR_NAME) 无论哪种方式，我们
-
 # 认为你学习这门课程勇气可嘉并值得鼓励。
 
 # 6. 现在把所有的秘密放在一边...让我们来深入探索一些数据！
-
 # 在 R 中已经有几个内置的数据集
-
 # 你可以尝试。现在，你将加载其中一个
-
 # 名为 mtcars 的数据。
-
 # 运行下一行命令来加载 mtcars 数据。
 
 data(mtcars)
 
 # 你应该看到mtcars出现在 ‘环境’ 标签中
-
 # <Promise> 的一旁列出。
-
 # 对象（mtcars）显示为在工作区的 ‘Promise’ 对象
-
 # 直到我们运行一些使用该对象的代码。
-
 # R 已经将 mtcars 数据存储到类似电子表格的对象中
-
 # 这被称为数据框。运行下一个命令来查看哪些变量
-
 # 在数据集中并将数据集完全加载为
-
 # 在 R 的对象。你应该看到 <Promise> 消失
-
 # 在你运行下一行代码时。
-
 # 如果你想要有对 Promise 对象的专家洞察力，
-
 # 请访问 http://cran.r-project.org/doc/manuals/r-release/R-lang.html#Promise-objects 了解更多
-
 # 你其实并不需要 Promise 对象的信息才能在本课程中成功。
 
 names(mtcars)
@@ -196,19 +163,12 @@ str(mtcars)
 dim(mtcars)
 
 # 向下滚动以获得答案。
-
 # 第一个命令 str（mtcars）提供了数据框结构
-
 # 它列出了变量名称，每个变量的类型
-
 # (所有这些变量都是数字) 和每一变量的
-
 # 一些值。
-
 # 第二个命令, dim(mtcars), 应该输出 '[1] 32 11'
-
 # 到控制台。 [1] 表示 32 在输出中
-
 # 是第一个值。
 
 # R 使用 1 来开始索引 (AND NOT ZERO BASED INDEXING 

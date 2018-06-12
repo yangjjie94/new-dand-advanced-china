@@ -11,6 +11,7 @@ Citation Request:
                 [bib] http://www3.dsi.uminho.pt/pcortez/dss09.bib
 
 1. Title: Wine Quality 
+红酒质量
 
 2. Sources
    Created by: Paulo Cortez (Univ. Minho), Antonio Cerdeira, Fernando Almeida, Telmo Matos and Jose Reis (CVRVV) @ 2009
@@ -68,6 +69,22 @@ Citation Request:
    11 - alcohol (% by volume)
    Output variable (based on sensory data): 
    12 - quality (score between 0 and 10)
+
+输入变量
+- 固定酸度（酒石酸 - g / dm^3）
+- 挥发性酸度（醋酸 - g / dm^3），在高浓度时会产生令人不愉快的醋味
+- 柠檬酸（g / dm^3），量小，给酒的加入新鲜度和风味
+- 剩余糖量（g / dm^3）），1g/L含糖量的酒很少见，45g/L含糖量的酒认为是甜的
+- 氯化物（氯化钠 - g / dm^3）），咸味
+- 自由二氧化硫（mg / dm^3），阻止微生物生长和酒氧化
+- 总二氧化硫（mg / dm^3），低浓度下，SO2很难检出；自由SO2浓度在高于50 ppm后会闻起来和尝起来很明显
+- 密度（g / cm^3），取决于酒精体积比例和糖含量
+- pH，大多数位于3-4
+- 硫酸盐（硫酸钾 - g / dm^3），添加剂，抗微生物和抗氧化剂。
+- 酒精度（体积分数 %）
+
+输出变量
+- 评分（0-10分）
 
 8. Missing Attribute Values: None
 

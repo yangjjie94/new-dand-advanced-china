@@ -8,22 +8,53 @@
 
 ### 散点图回顾
 
+技巧：用`quantile`把carat和price的高位百分比修饰掉
 ```{r Scatterplot Review}
+library(ggplot2)
+data(diamonds)
 
+qplot(data = diamonds, x = carat, y = price, 
+      xlim = c(0, quantile(diamonds$carat, 0.99)), 
+      ylim = c(0,quantile(diamonds$price, 0.99))) +
+  geom_point(fill = I('#F79420'), color = I('black'), shape = 21)
 ```
+
+```{r}
+# ggplot equivalent
+ggplot(diamonds, aes(x = carat, y=price)) + 
+  scale_x_continuous(lim = c(0, quantile(diamonds$carat, 0.99))) + 
+  scale_y_continuous(lim = c(0, quantile(diamonds$price, 0.99))) + 
+  geom_point(fill = I('#F79420'), color = I('black'), shape = 21)
+```
+
+
 
 ***
 
 ### 价格与克拉的关系
 回复：
+非线性，可能是指数关系或其他
+方差会随着克拉数增大而增大
+
+#### 使用统计平滑函数，向图中加入一条线性的裁切线，我们看到趋势线不会穿过关键区域数据的中心，在数据的中心应该有点弧度，在尾部要略微上升，
+```{r}
+## Add on Linear Model
+ggplot(diamonds, aes(x = carat, y=price)) + 
+  scale_x_continuous(lim = c(0, quantile(diamonds$carat, 0.99))) + 
+  scale_y_continuous(lim = c(0, quantile(diamonds$price, 0.99))) + 
+  geom_point(color = I('#F79420'), alpha = 1/4) + 
+  stat_smooth(method = 'lm')
+```
+
 
 ***
 
 ### Frances Gerety
 注释：
+你卖过钻石吗？
 
 #### 钻石是
-
+虽然钻石数据集只是价格和隐秘的认证等级，数据内隐藏的秘密能够反映一个传奇营销活动的策划，并且纳入文化内涵，最终暗示了不同社会阶层的反应以及当今钻石市场的运作。故事始于1870年，人们在南非奥伦治河附近发现数吨钻石时，那时的钻石市场非常小，只从印度和巴西开采数磅，那时的钻石除了珠宝以外毫无用处，所以价格仅取决于稀有供应。因此，项目投资人在1888年成立了戴比尔斯De Beers同业联盟，试图控制全球钻石的价格，这是公认的历史上最成功的同业联盟，但一战爆发和大萧条，见证了钻石销量的大滑坡，1938年，De Beers同业联盟联系费城广告代理N.W.Ayer and Son咨询能否通过各种宣传途径帮助在美国的钻石销量取得飞跃。美国是当时唯一现在可行的市场，然而，调查显示在考虑结婚的情侣中，钻石在优先级列表中的地位并不高，作为富人的奢侈品，就是在白白浪费钱财，Frances Gerety接手N.W. Ayer and Son的戴比尔斯客户，公司的目标就是打造一种意境，让所有考虑结婚的情侣，感觉需要一枚钻石订婚戒指，数年后，她铸就了一句著名的广告语，A Diamond is Forever。这句广告语1948年就出现在每一个戴比尔斯广告中
 ***
 
 ### 钻石的兴起
@@ -33,7 +64,12 @@
 
 ### ggpairs 函数
 注释：
+首先使用GGpair函数对主要变量进行绘图，这个函数以成对的形式绘制每个变量之间的关系图，你可先进行尝试，否则该函数会话很长时间才能完成图形。同时，如果你的数据集超过10列，将会出现太多的绘图窗口，所以在这种情况下，应该先进行子集划分。
 
+首先确保你安装了这些程序包，
+我们使用GGally来做这幅图，我们使用标度scales来表现很多东西，memisc用于汇总回归summarize the regression，Lattice用于其他方面，mass用于各种函数，car用于重写变量代码recode variables，reshape用于reshape和整理wrangle你的数据，plyr用于创造有意思的汇总summaries以及传输transmissions。
+
+加载程序包，然后设置用于随机化的种子，并从钻石数据集中取出一万行样本，现在ggpairs正以相当智能的方式绘制变量之间的关系图，在图形矩阵的下三角内，对于定性、定性的配对，使用分组直方图grouped histogram；对于定量、定量的配对使用散点图，在上三角内，对于定性、定性的配对绘制分组直方图，这时使用x代替y变量作为分组因子，对于定性、定性的配对中使用箱线图，并提供定量、定量配对的相关性，记住我们的目标是了解钻石的价格，我们专注于这一点，价格变量在这里。
 ```{r ggpairs Function}
 # 如有需要，安装下列组件
 install.packages('GGally')
@@ -42,8 +78,8 @@ install.packages('memisc')
 install.packages('lattice')
 install.packages('MASS')
 install.packages('car')
-install.packages('reshape')
-install.packages('plyr')
+install.packages('reshape2')
+install.packages('dplyr')
 
 # 加载 ggplot 图画组件及其他内容
 library(ggplot2)
@@ -51,44 +87,80 @@ library(GGally)
 library(scales)
 library(memisc)
 
+
 # 数据集中 10,000 个钻石的样本
 set.seed(20022012)
 diamond_samp <- diamonds[sample(1:length(diamonds$price), 10000), ]
-ggpairs(diamond_samp, params = c(shape = I('.'), outlier.shape = I('.')))
+#ggpairs(diamond_samp, params = c(shape = I('.'), outlier.shape = I('.')))
+ggpairs(diamond_samp,
+        axisLabels = 'internal',
+        lower = list(continuous = wrap("points", shape = I('.'))),
+        upper = list(combo = wrap("box", outlier.shape = I('.'))))
 ```
 
 在 ggpairs 输出中你发现了什么？
 回复：
+我们观察correspond to 价格的关系，
 
+我们可以看到，在价格和净度clarity之间以及价格和颜色之间可能存在某种关系。我们以后开始建模时要记住这一点，你在问题集3中创建箱线图时也要记住这一点。即便如此，驱动价格的关键因素还是钻石的大小、或者克拉重量。
+
+我们在本课开始时看到，价格与钻石大小之间的关系是非线性的。我们如何解释这一现象呢？从供应商来看，没有重大瑕疵的较大连续钻石块比小的更难发现，这可能有助于解释我们的指数形曲线。因为体积是尺寸的三次方，所以我们可能感兴趣的是价格对克拉重量的立方根的关系，通常，利用类似这样对数据的深入了解，可以带来富有成果的转换。
 ***
 
 ### 钻石的需求
 注释：
+在需求侧，市场上需要价格低尺寸小钻石的客户，相比更加富裕的买家，可能对价格更加敏感，很多购买钻石在一克拉以下的客户，肯定从未买过钻石，钻石并非用于求婚时需要奉上什么东西的社会惯例social norm，有更少的客户能够买得起超过一克拉的大钻石，因此我们不希望较大钻石的市场与较小钻石的市场具有同样的竞争性，因此该变化variance以及价格应该会随着克拉数的增加而增加。通常，想美元这种货币变量的分布，将会被高度扭曲skewed，区别达几个量级vary over orders。这可能源自于路径依赖性path dependence，比如富人越富rich getting richer，或者倍增过程multiplicative processes，比如年同比通胀，或者二者的某种组合作用，因此将这两种变量进行压缩是个不错的方法，即将其放到对数标度上，对于何时使用对数对数标度以及如何对变量进行变换的更多提示请查看 对数转换。我们再来研究价格的分布。
+
+我们再来研究价格的分布。你将需要编写代码来生成两个价格直方图，
+
+我们使用qplot产生两个直方图，一个使用常规标度，一个使用常用对数标度，我们使用gridExtra这个库，在同一个窗口中绘出两幅图，结果就像这样。
 
 ```{r The Demand of Diamonds}
+library(gridExtra)
+library(grid)
 
+plot1 <- qplot(data = diamonds, 
+               x = price, binwidth = 100, 
+               fill = I('#900DD0')) + 
+  ggtitle('Price')
+plot2 <- qplot(data = diamonds, 
+               x = price, binwidth = 0.01, 
+               fill = I('#F79420')) + 
+  ggtitle('Price (log10)') + 
+  scale_x_log10()
+
+
+grid.arrange(plot1, plot2, ncol = 2)
 ```
 
+思考对数坐标转换后的两个峰值意味着钻石需求的什么情况？
 ***
 
 ### 结合需求和价格的分布
 注释：
 
+在对数坐标转换过的图中，我们发现到了正态分布的痕迹，以及双峰分布的特点，符合了我们预想的穷人买家和富人买家两个类别的推测。当你观察对数的价格下降时实际上在问题集可以先睹为快。
+展示了上图的price直方图在不同切割类别(ideal,)的五个图中的特点
 ***
 
 ### 改变散点图
 
 ```{r Scatterplot Transformation}
-
+qplot(carat, price, data = diamonds) +
+  scale_y_continuous(trans = log10_trans() ) +
+  ggtitle('Price (log10) by Carat')
 ```
 
 
 ### 创建一个新函数，改变变量 carat
 
 ```{r cuberoot transformation}
-cuberoot_trans = function() trans_new('cuberoot', transform = function(x) x^(1/3),
+cuberoot_trans = function() trans_new('cuberoot',
+                                      transform = function(x) x^(1/3),
                                       inverse = function(x) x^3)
 ```
+
+然后我们使用ggplot函数中的scale_x_continuous通过这个立方根转换函数来转换x轴，记住我们同时使用这个和以前讨论的log10变换来转换y轴。
 
 #### 使用函数 cuberoot_trans
 ```{r Use cuberoot_trans}
@@ -101,18 +173,26 @@ ggplot(aes(carat, price), data = diamonds) +
   ggtitle('Price (log10) by Cube-Root of Carat')
 ```
 
+转换后我们可以在这种漂亮的标度上表现我们的数据，看起来几乎呈现线性关系。现在可以考虑使用线性模型来为数据建模。
+
 ***
 
 ### 再次访问过度绘制
 
-```{r Sort and Head Tables}
+现在多个点具有相同的值，这通常是由四舍五入造成的。我们通过运行一些代码来观察，我们要在克拉和价格上运行表命令，然后进行排序，让最高的值显示在前面。我们发现，确实存在一些高值，会导致相当数量的图形叠加，使用这些数据，将会出现严重的图形叠加overplotting，即使安装变量之间的关系进行绘图，这样会掩盖我们的数据的密度density和稀疏度sparsity，对这个问题可以通过抖动点jitteringh和增加透明度adding transparency来让点变小点。
+你需要为 geom_point() 中的 alpha、size 和 position 调整参数。要抖动散点，请将 position 设置为等于“jitter”。
 
+```{r Sort and Head Tables}
+head(sort(table(diamonds$carat), decreasing = T))
+```
+```{r}
+head(sort(table(diamonds$price), decreasing = T))
 ```
 
 
 ```{r Overplotting Revisited}
 ggplot(aes(carat, price), data = diamonds) + 
-  geom_point() + 
+  geom_point(alpha = 0.1, size = 0.75, position = 'jitter') + 
   scale_x_continuous(trans = cuberoot_trans(), limits = c(0.2, 3),
                      breaks = c(0.2, 0.5, 1, 2, 3)) + 
   scale_y_continuous(trans = log10_trans(), limits = c(350, 15000),
@@ -124,18 +204,21 @@ ggplot(aes(carat, price), data = diamonds) +
 
 ### 其他定性因素
 注释：
-
+除了克拉数，我们还发现净度clarity好像也是价格的影响因素。但我们不应该认为净度是和克拉数一样重要的对价格的影响因素，
 ***
 
 ### 价格 vs. 克拉与净度
+使用颜色对图形进行可视化以后，我们来观察净度、切割或颜色是否可以解释价格的变化。
 
-改变下列代码。
+先开始考察净度，这个代码可视化价格与克拉之间的关系进行调整，按照净度显示不同点的颜色。
+
+在ggplot的aes中加入color = clarity，引入第三个维度--clarity
 ```{r Price vs. Carat and Clarity}
 # 安装并加载 RColorBrewer 组件
-install.packages('RColorBrewer')
+# install.packages('RColorBrewer')
 library(RColorBrewer)
 
-ggplot(aes(x = carat, y = price), data = diamonds) + 
+ggplot(aes(x = carat, y = price, colour = clarity), data = diamonds) + 
   geom_point(alpha = 0.5, size = 1, position = 'jitter') +
   scale_color_brewer(type = 'div',
     guide = guide_legend(title = 'Clarity', reverse = T,
@@ -147,44 +230,26 @@ ggplot(aes(x = carat, y = price), data = diamonds) +
   ggtitle('Price (log10) by Cube-Root of Carat and Clarity')
 ```
 
+
+
 ***
 
 ### 净度与价格
 回复：
-
+将颜色加入到我们图中以后，看起来的确净度能够说明价格变化的很多其他方面，我们将克拉重量保持常量，观察这幅图的一个部分，可以看到净度较低的钻石始终比净度更高的钻石要便宜，
 ***
 
 ### 价格 vs. 克拉与切工
 
+现在我们观察切割，更改代码，按切割对点着色，并更改标题。
+
 改变下列代码。
 ```{r Price vs. Carat and Cut}
-ggplot(aes(x = carat, y = price, color = clarity), data = diamonds) + 
-  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
-  scale_color_brewer(type = 'div',
-                     guide = guide_legend(title = 'Clarity', reverse = T,
-                                          override.aes = list(alpha = 1, size = 2))) +  
-  scale_x_continuous(trans = cuberoot_trans(), limits = c(0.2, 3),
-                     breaks = c(0.2, 0.5, 1, 2, 3)) + 
-  scale_y_continuous(trans = log10_trans(), limits = c(350, 15000),
-                     breaks = c(350, 1000, 5000, 10000, 15000)) +
-  ggtitle('Price (log10) by Cube-Root of Carat and Clarity')
-```
-
-***
-
-### 切工与价格
-回复：
-
-***
-
-### 价格 vs. 克拉与颜色
-
-改变下列代码。
-```{r Price vs. Carat and Color}
+names(diamonds)
 ggplot(aes(x = carat, y = price, color = cut), data = diamonds) + 
   geom_point(alpha = 0.5, size = 1, position = 'jitter') +
   scale_color_brewer(type = 'div',
-                     guide = guide_legend(title = Cut, reverse = T,
+                     guide = guide_legend(title = 'Clarity', reverse = T,
                                           override.aes = list(alpha = 1, size = 2))) +  
   scale_x_continuous(trans = cuberoot_trans(), limits = c(0.2, 3),
                      breaks = c(0.2, 0.5, 1, 2, 3)) + 
@@ -195,20 +260,46 @@ ggplot(aes(x = carat, y = price, color = cut), data = diamonds) +
 
 ***
 
-### 颜色与价格
+### 切工与价格
 回复：
+我们在钻石切割上看不到太多差异。
+数据中的大多数钻石均为理想切割，所以我们已经丢失了以前看到的颜色模式，
+***
+
+### 价格 vs. 克拉与颜色
+接下来，我们使用钻石颜色作为我们绘图中的颜色。
+我们将切割替换成aesthetic wrapper中的color，改变了图例legend标题以及图形plot标题，最后去掉了图例中的反参数reverse parameter，这样，最佳颜色位于图例中列表的顶部。
+
+改变下列代码。
+```{r Price vs. Carat and Color}
+ggplot(aes(x = carat, y = price, color = color), data = diamonds) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+                     guide = guide_legend(title = 'Color', reverse = FALSE, override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(trans = cuberoot_trans(), limits = c(0.2, 3),
+                     breaks = c(0.2, 0.5, 1, 2, 3)) + 
+  scale_y_continuous(trans = log10_trans(), limits = c(350, 15000),
+                     breaks = c(350, 1000, 5000, 10000, 15000)) +
+  ggtitle('Price (log10) by Cube-Root of Carat and Color')
+```
 
 ***
 
-### R 中的线性模型
-注释：
-
+### 颜色与价格
 回复：
+看来颜色似乎能解释价格的一些变化，就像我们从净度变量中看到的那样，然而据Blue Nile公司目前表示从D到J所有颜色等级之间的差异对于肉眼基本上无法察觉，但是我们在价格标签上的确看到颜色差异。
+***
 
+### R 中的线性模型 use the lm() function
+注释：
+在R中可以使用lm()函数创建模型，我们需要按照y~x格式提供一个公式，y是结果变量outcome variable，x是解释变量explanatory variable。
+回复：
+我们选择的公式是log(price) ~ carat^(1/3)，我们对长尾变量美元使用log10，无瑕疵钻石将呈指数规律减少，所以我们应该关注克拉重量的立方根。
 ***
 
 ### 构建线性模型
 Notes:
+我们来为价格建立线性模型，我们将第一个模型保存在名叫ml的变量中，你可能还注意到我如何在每个变量周围使用`I` wrapper。
 
 ```{r Building the Linear Model}
 m1 <- lm(I(log(price)) ~ I(carat^(1/3)), data = diamonds)
@@ -219,6 +310,8 @@ m5 <- update(m4, ~ . + clarity)
 mtable(m1, m2, m3, m4, m5)
 ```
 
+运行代码时，可以看到我们得到了非常漂亮的R^2，我们使用四个C考虑了价格中的几乎全部四个变化，如果我们想知道一枚钻石的价格是否合理，现在就可以使用这个模型。
+
 注意，把切工增加到我们模型中，为什么不利于解释钻石价格的方差。
 之前没有探讨过这个问题。
 
@@ -226,26 +319,34 @@ mtable(m1, m2, m3, m4, m5)
 
 ### 模型中的问题
 视频注释：
+我们的模型是 ln(price) = 0.415 + 9.144(carat)^(1/3) - 1.093 carat + (...*cut + ...*color+ ...*clarity) + varepsilon
 
+让我们将模型放到更大的环境中进行讨论。假设数据没有遭到损坏，而且我们没有过度违反线性回归的一些关键假设
 Research:
 (花时间解决模型的 2-4 个问题)
 (应该花费 10 到 20 分钟完成)
 
 回复：
-
+- inflation
+- 2008 global recession
+- diamond market in China neating up
+- Uneven recoery / price increase across different carat weight
+1. 我们的数据从2008年开始，我们不仅要考虑通胀，而且钻石市场也绝对是今非昔比，实际上，当我用模型拟合此数据，发现钻石市场情况很不好，在2008年一全球金融危机，价格一落千丈，从那以后价格有所上升，至少对于批发抛光钻石，每年上升大约6%，符合年增长率。在中国快速增长的购买订婚钻戒的夫妻数量，也可以接受这种增长;最后，观察价格范围内的数据以后，价格增长在不同克拉大小之间的增长并不均匀，意味着最初估计的模型不能简单地用通胀进行调整，
 ***
 
 ### 更大更优的数据集
 Notes:
-
+幸运的是，我能够将Python脚本放到一起，来获得当前钻石价格数据，类似于原始的钻石数据集，不费太大力气。这个数据集大概是2008年钻石数据集的10倍，囊括了世界多家宝石协会，而不只是美国宝石学会（GIA, General Logical Institute of America)，你可按下列方式安装，但要确保已经安装了R curl和bit top库才行。
+加载数据集所需时间有点长，因为数据集包括超过500,000个案例，用于获取数据的代码位于此链接内，我们再次将模型拟合大的数据集。我们仅观察一万美元以下的数据集，因为这是大多数零售商售卖的钻石品种，因此也是我们关注最多的品种，从数据集随删掉最贵的钻石，我们的模型将被异常数据值抛弃的可能性不太大，而价格和克拉高端处会有更多变化。
 ```{r A Bigger, Better Data Set}
-install.package('bitops')
+install.packages('bitops')
 install.packages('RCurl')
 library('bitops')
 library('RCurl')
 
-diamondsurl = getBinaryURL("https://raw.github.com/solomonm/diamonds-data/master/BigDiamonds.Rda")
-load(rawConnection(diamondsurl))
+# diamondsurl = getBinaryURL("https://raw.github.com/solomonm/diamonds-data/master/BigDiamonds.Rda")
+# load(rawConnection(diamondsurl))
+diamondsbig <- load("BigDiamonds.rda")
 ```
 
 这里可以获取得到数据所使用的代码：
@@ -255,32 +356,64 @@ https://github.com/solomonm/diamonds-data
 Notes:
 
 ```{r Building a Model Using the Big Diamonds Data Set}
-
+suppressMessages(library(lattice))
+suppressMessages(library(MASS))
+suppressMessages(library(memisc))
+models <- mtable(m1, m2, m3, m4, m5)
+# names(diamondsbig)
+diamondsbig$logprice = log(diamondsbig$price)
+m1 <- lm(logprice ~ I(carat^(1/3)), data = diamondsbig[diamondsbig$price < 10000 & diamondsbig$cert == 'GIA',])
+m2 <- update(m1, ~ . + carat)
+m3 <- update(m2, ~ . + cut )
+m4 <- update(m3, ~ . + color)
+m5 <- update(m4, ~ . + clarity)
+mtable(m1, m2, m3, m4, m5)
 ```
 
 ***
 
 ## 预测
+实现预测，我们需要对预测的结果取幂，由于我们取价格的对数。
+预测得到了给定钻石特征的价格预期值，上下跳动达到95%的置信水平。注意，因为这是一个线性模型，预估时只是将每个模型系数乘以我们数据中的每个值，最终证明，这颗钻石比全模型下预期价值要高得多。虽然绝不会超过95%的置信区间，Blue Nile公司目前在大多数客户心中比钻石Se.info的声誉还要高，在很容易伪造整数，可轻易愚弄非专业人员的行业里，声誉可谓价值千金。所以，虽然这个模型可能让你大概感到自己的钻石按照diamond SE.info钻石标准是否是赝品，但并不清楚安装diamond SE.info是否应当做判断钻石价格是否合理的真实标准。虽然如此，用预期价格以及diamondssay.info的95%区间要比仅知道购买钻石时要付的价格意义要大得多。这是我们做这个练习之前要明白的。
 
 BlueNile 钻石例子：
 直径为 1.00 等级很好 I VS I 的钻石价格是 $5,601
 
 ```{r}
 # 确保你已经加载了 memisc 库，保存为 m5 作为工作区的对象。
+library(memisc)
 thisDiamond = data.frame(carat = 1.00, cut = "V.Good",
                          color = "I", clarity="VS1")
 modelEstimate = predict(m5, newdata = thisDiamond,
                         interval="prediction", level = .95)
 ```
 
-评估模型如何较好地预测 BlueNile 钻石价格。思考最佳点估计和 95% 的置信区间。
+改进：
+此处的预测区间可能稍微有些保守，因为模型误差是克拉（并因此是价格）的异方差，即使在进行对数和立方根转换之后。
+
+请见以下代码的输出。
+dat = data.frame(m4$model, m4$residuals)
+
+with(dat, sd(m4.residuals))
+
+with(subset(dat, carat > .9 & carat < 1.1), sd(m4.residuals))
+
+dat$resid <- as.numeric(dat$m4.residuals)
+ggplot(aes(y = resid, x = round(carat, 2)), data = dat) +
+  geom_line(stat = "summary", fun.y = sd)
+
+怎样可以做得更好？如果我们关注的是 0.5 到 1.5 克拉的钻石，我们可以只用这部分的数据来拟合模型——别担心，数据量是足够的。
+
+评估模型如何较好地预测 BlueNile 钻石价格。思考最佳点估计和 95% 的置信区间confidence interval。
 
 ***
 
 ## 最终思考
-注释：
+注释：即使我们可以根据模型预测钻石的价格，通过这个联系不能得出的结论是你购买钻石的地点是不相关的，你在蒂芙尼Tiffany购买相同的钻石花的钱几乎肯定比在好市Costco多花的要高，尽管你客户使用这样的模型感知到自己是否花了冤枉钱，数据和模型从来不是绝对可靠的，即使通过这种分析仍无法排除被下套get taken的可能性，没有什么能够替代与自己信赖的珠宝商之间建立私人关系和持久的商业关系lasting bussiness relationship
+
 
 ***
+
 
 点击 **KnitHTML** 查看你的成果和这节课的 html 页面、
 答案和注释！
