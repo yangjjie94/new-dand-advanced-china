@@ -1,0 +1,890 @@
+Project 3
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# 加载你最终使用的所有组件
+# 在这个代码块的分析中。
+
+# 注意，在这个代码块中，将参数 "echo" 设为假。
+# This prevents the code from displaying in the knitted HTML output.这可以避免代码混入 HTML 输出显示。
+# 应当在文件中，对所有代码块设为 echo=FALSE 。
+
+library(ggplot2)
+library(GGally)
+library(scales)
+library(memisc)
+library(gridExtra)
+library(grid)
+library(RColorBrewer)
+library(bitops)
+library(RCurl)
+library(reshape2)
+library(dplyr)
+library(knitr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# 加载数据
+ww <- read.csv("wineQualityWhites.csv")
+wr <- read.csv("wineQualityReds.csv")
+wr$color = 'red'
+ww$color = 'white'
+data <- rbind(wr, ww)
+str(data)
+```
+
+```{r}
+summary(data)
+```
+
+
+通过单组数据的描述性统计量可以发现，异常值多出现在上四分位后，比如fixed.acidity、volatile.acidity、citric.acid、residual.sugar、chlorides、free.sulfur.dioxide、total.sulfur.dioxide、sulphates，发现主要是酒的风味物质差别很大，物性的差值就很小。我们重点探究我们研究的被解释变量——质量评分，和分布比较异常的几个变量。
+
+# 单变量绘图选择
+
+我们查看红葡萄酒和白葡萄酒的评分的分布
+
+```{r echo=FALSE, Univariate_Plots}
+ggplot(aes(quality), data = data) +
+ geom_bar() + 
+ ggtitle("quality scores")
+```
+
+发现有点偏，可能评分会更符合对数正态分布。选择y轴为对数坐标
+
+```{r echo=FALSE}
+ggplot(aes(quality), data = data) +
+  geom_bar() + 
+  scale_y_log10() +
+  ggtitle("quality scores")
+```
+
+可以看出，分数呈现对数正态分布。
+
+我们接下来看几个离群值比较多的解释变量。  
+1\. volatile.acidity
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = volatile.acidity), data = data) +
+  coord_cartesian(xlim = c(0, 1.5)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(0.1, 1.5,0.2)) + 
+  labs(x = 'Volatile.acidity (mg / cm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of original volatile.acidity')
+
+
+p2 <- ggplot(aes(x = volatile.acidity), data = data) +
+  coord_cartesian(xlim = c(0.1, 1.5)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_log10(breaks = seq(0, 1.5, 0.2)) + 
+  labs(x = 'volatile.acidity (mg / cm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(volatile.acidity)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+挥发酸量符合对数正态分布
+
+2\. chlorides
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = chlorides), data = data) +
+  coord_cartesian(xlim = c(0, 0.5)) +
+  geom_histogram(binwidth = 0.01) +
+  scale_x_continuous(breaks = seq(0.01, 0.5,0.05)) + 
+  labs(x = 'Volatile.acidity (mg / cm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of chlorides')
+
+
+p2 <- ggplot(aes(x = chlorides), data = data) +
+  coord_cartesian(xlim = c(0.01, 0.5)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_log10(breaks = seq(0.01, 0.5, 0.05)) + 
+  labs(x = 'Chlorides (mg / cm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(chlorides)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+发现氯化物呈长尾分布。
+
+3\. total.sulfur.dioxide
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = total.sulfur.dioxide), data = data) +
+  coord_cartesian(xlim = c(0, 300)) +
+  geom_histogram(binwidth = 5) +
+  scale_x_continuous(breaks = seq(0, 300,20)) + 
+  labs(x = 'Total.sulfur.dioxide (mg / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of total.sulfur.dioxide.acidity')
+
+p1
+```
+
+发现总的二氧化硫分布很宽，而且有一些上部的离群值。
+
+4\. residual.sugar
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = residual.sugar), data = data) +
+  coord_cartesian(xlim = c(0.6, 20)) +
+  geom_histogram(binwidth = 0.2) +
+  scale_x_continuous(breaks = seq(0, 20, 2)) + 
+  labs(x = 'Residual sugar (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of original residual.sugar')
+
+
+p2 <- ggplot(aes(x = residual.sugar), data = data) +
+  coord_cartesian(xlim = c(0.6, 20)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_log10(breaks = seq(0, 20, 2)) + 
+  labs(x = 'Residual sugar (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(residual.sugar)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+可以发现剩余糖量的分布也很宽，且呈现长尾分布。
+
+
+剩下的几个变量从summary中几乎没有看到离群值，我们仔细看一下其分布
+
+
+
+               
+5\. fixed.acidity
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = fixed.acidity), data = data) +
+  coord_cartesian(xlim = c(4, 15)) +
+  geom_histogram(binwidth = 0.2) +
+  scale_x_continuous(breaks = seq(0, 20, 1)) + 
+  labs(x = 'fixed.acidity (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of fixed.acidity')
+
+
+p2 <- ggplot(aes(x = fixed.acidity), data = data) +
+  coord_cartesian(xlim = c(4, 15)) +
+  geom_histogram(binwidth = 0.015) +
+  scale_x_log10(breaks = seq(0, 20, 1)) + 
+  labs(x = 'fixed.acidity (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(fixed.acidity)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+
+6\. citric.acid
+
+```{r echo=FALSE, warning=FALSE}
+p1 <- ggplot(aes(x = citric.acid), data = data) +
+  coord_cartesian(xlim = c(0, 1.0)) +
+  geom_histogram(binwidth = 0.02) +
+  scale_x_continuous(breaks = seq(0, 1.5, 0.1)) + 
+  labs(x = 'citric.acid (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of citric.acid')
+
+
+p2 <- ggplot(aes(x = citric.acid), data = data) +
+  coord_cartesian(xlim = c(0.05, 1.0)) +
+  geom_histogram(binwidth = 0.02) +
+  scale_x_log10(breaks = seq(0.05, 1.5, 0.15)) + 
+  labs(x = 'citric.acid (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(citric.acid)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+7\. free.sulfur.dioxide
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = free.sulfur.dioxide), data = data) +
+  coord_cartesian(xlim = c(0, 150)) +
+  geom_histogram(binwidth = 5) +
+  scale_x_continuous(breaks = seq(0, 300, 20)) + 
+  labs(x = 'free.sulfur.dioxide (mg / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of free.sulfur.dioxide')
+
+
+p2 <- ggplot(aes(x = free.sulfur.dioxide), data = data) +
+  coord_cartesian(xlim = c(1, 150)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_log10(breaks = seq(0,150, 20)) + 
+  labs(x = 'free.sulfur.dioxide (mg / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(free.sulfur.dioxide)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+
+8\. total.sulfur.dioxide
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = total.sulfur.dioxide), data = data) +
+  coord_cartesian(xlim = c(5, 450)) +
+  geom_histogram(binwidth = 5) +
+  scale_x_continuous(breaks = seq(5, 450, 50)) + 
+  labs(x = 'total.sulfur.dioxide (mg / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of total.sulfur.dioxide')
+
+
+p2 <- ggplot(aes(x = total.sulfur.dioxide), data = data) +
+  coord_cartesian(xlim = c(5, 450)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_log10(breaks = seq(5, 450, 100)) + 
+  labs(x = 'total.sulfur.dioxide (mg / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(total.sulfur.dioxide)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+9\. density
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = density), data = data) +
+  coord_cartesian(xlim = c(0.985, 1.015)) +
+  geom_histogram(binwidth = 0.0005) +
+  scale_x_continuous(breaks = seq(0.985, 1.04, 0.01)) + 
+  labs(x = 'density (g / cm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of density')
+
+p1
+```
+
+
+10\. pH
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = pH), data = data) +
+  coord_cartesian(xlim = c(2.70, 4)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(breaks = seq(2.5, 4, 0.5)) + 
+  labs(x = 'pH',
+       y = 'Count',
+       title = 'Visualize the distribution of pH')
+
+
+p1
+```
+
+11/. sulphates
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = sulphates), data = data) +
+  coord_cartesian(xlim = c(0.22, 2.0)) +
+  geom_histogram(binwidth = 0.02) +
+  scale_x_continuous(breaks = seq(0.2,2, 0.2)) + 
+  labs(x = 'sulphates (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of sulphates')
+
+
+p2 <- ggplot(aes(x = sulphates), data = data) +
+  coord_cartesian(xlim = c(0.22,2.0)) +
+  geom_histogram(binwidth = 0.02) +
+  scale_x_log10(breaks = seq(0.2,2, 0.2)) + 
+  labs(x = 'sulphates (g / dm^3)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(sulphates)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+12\. alcohol
+
+```{r echo=FALSE}
+p1 <- ggplot(aes(x = alcohol), data = data) +
+  coord_cartesian(xlim = c(8, 15)) +
+  geom_histogram(binwidth = .2) +
+  scale_x_continuous(breaks = seq(8, 15, 1)) + 
+  labs(x = 'alcohol (% by volume)',
+       y = 'Count',
+       title = 'Visualize the distribution of alcohol')
+
+
+p2 <- ggplot(aes(x = alcohol), data = data) +
+  coord_cartesian(xlim = c(8, 15)) +
+  geom_histogram(binwidth = 0.01) +
+  scale_x_log10(breaks = seq(8, 15, 1)) + 
+  labs(x = 'alcohol (% by volume)',
+       y = 'Count',
+       title = 'Visualize the distribution of log10(alcohol)')
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+13\. color
+
+```{r echo=FALSE}
+ggplot(aes(factor(color), fill = color), data = data) +
+  geom_bar(alpha = 0.5) + 
+  labs(x = 'color',
+       y = 'Count',
+       title = 'Visualize the number of alcohol')
+```
+
+
+# 单变量分析
+
+### 你的数据集结构是什么？
+这个整齐的数据集包含1,599种红酒，以及11个关于酒的化学成分的变量。至少3名葡萄酒专家对每种酒的质量进行了评分，分数在0（非常差）和10（非常好）之间，quality是定序变量。  
+输入变量  
+
+- 固定酸度（酒石酸 - g / dm^3），连续变量
+- 挥发性酸度（醋酸 - g / dm^3），在高浓度时会产生令人不愉快的醋味，连续变量
+- 柠檬酸（g / dm^3），量小，给酒的加入新鲜度和风味，连续变量
+- 剩余糖量（g / dm^3）），1g/L含糖量的酒很少见，45g/L含糖量的酒认为是甜的，连续变量
+- 氯化物（氯化钠 g / dm^3）），咸味，连续变量
+- 自由二氧化硫（mg / dm^3），阻止微生物生长和酒氧化，连续变量
+- 总二氧化硫（mg / dm^3），低浓度下，SO2很难检出；自由SO2浓度在高于50 ppm后会闻起来和尝起来很明显，连续变量
+- 密度（g / cm^3），取决于酒精体积比例和糖含量，连续变量
+- pH，大多数位于3-4，连续变量
+- 硫酸盐（硫酸钾 - g / dm^3），添加剂，抗微生物和抗氧化剂。，连续变量
+- 酒精度（体积分数 %），连续变量
+
+### 你的数据集内感兴趣的主要特性有哪些？
+我感兴趣的主要特性有酒精含量、total.sulfur.dioxide（防腐、刺激性气味）、chlorides（咸味）
+
+### 你认为数据集内哪些其他特征可以帮助你探索兴趣特点？
+红酒和白酒的区别、风味物质含量（chlorides（咸味）、vol.acid（酸味）、total.sulfur.dioxide（刺激性气味），密度因为主要和酒精度和甜度相关（在上图中也可以看到）应该可以用酒精度来替代。
+
+### 根据数据集内已有变量，你是否创建了任何新变量？
+将free.sulfur.dioxide和total.sulfur.dioxide的单位改大成 g / dm^3；合并了红酒和白酒数据集，并添加了类型变量color
+
+### 在已经探究的特性中，是否存在任何异常分布？你是否对数据进行一些操作，如清洁、调整或改变数据的形式？如果是，你为什么会这样做？
+发现在fixed.acidity, volatile.acidity, citric.acid, residual.sugar, chlorides, free.sulfur.dioxide， total.sulfur.dioxide, sulphates这几个变量都存在异常大值，在以后相关的绘图中使用xlim = c(0, quantile(diamonds$carat, 0.99))把极端大值修饰掉。
+
+
+# 双变量绘图选择
+
+我们首先通过ggpairs和ggcorr大致了解变量的相关程度。
+
+```{r  echo=FALSE, scatter_plot_matrix, fig.height=20, fig.width=20, message=FALSE, warning=FALSE}
+tmp_data <- subset(data, select = -c(X))
+ggpairs(tmp_data,
+        axisLabels = 'internal',
+        lower = list(continuous = wrap("points", shape = I('.'))),
+        upper = list(combo = wrap("box", outlier.shape = I('.')))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+```{r   echo=FALSE}
+tmp_data <- subset(data, select = -c(X))
+ggcorr(tmp_data)
+```
+
+先查看红葡萄酒和白葡萄酒的评分的分布
+
+```{r echo=FALSE}
+ggplot(aes(quality, fill = color), data = data) +
+ geom_bar(alpha = 0.5) + 
+ ggtitle("quality scores")
+```
+
+改为对数分布，同时排列方式改为 dodge
+
+```{r echo=FALSE}
+ggplot(aes(quality, fill = color), data = data) +
+  geom_bar(alpha = 0.5,position = 'dodge') + 
+  scale_y_log10() +
+  ggtitle("quality scores")
+```
+
+可以看出，分数呈现对数正态分布。另外，虽然红葡萄酒的样本数量相对较少，但是的确白葡萄酒的好评占比更多。
+
+
+
+先查看相关性最强的几对
+
+- free.sulfur.dioxide 和 total.sulfur.dioxide
+- alcohol 和 density
+- chlorides 和 density
+
+Relationship of free.sulfur.dioxide vs total.sulfur.dioxide
+
+```{r echo=FALSE}
+ggplot(data = data,
+       aes(x = total.sulfur.dioxide, y = free.sulfur.dioxide, color = factor(quality))) + 
+  coord_cartesian(xlim = c(0, 300),
+                  ylim = c(0, 150)) +
+  geom_jitter() + 
+  scale_x_continuous(breaks = seq(0,300, 50)) + 
+  scale_color_brewer(type="seq") +
+  theme_dark() +
+  labs(x = 'total.sulfur.dioxide (mg / dm^3)',
+       y = 'free.sulfur.dioxide (mg / dm^3)',
+       title = 'Relationship of total.sulfur.dioxide VS free.sulfur.dioxide with colored quality levels')
+```
+
+正相关性很明显，而且和被解释变量quality质量没有明显关系
+
+Relationship of density VS alcohol
+
+```{r echo=FALSE}
+ggplot(data = data,
+       aes(x = alcohol, y = density, color = factor(quality))) + 
+  coord_cartesian(xlim = c(8, 14),
+                  ylim = c(0.986, 1.005)) +
+  scale_x_continuous(breaks = seq(8, 15, 1)) + 
+  geom_jitter() + 
+  scale_color_brewer(type="seq") +
+  theme_dark() +
+  labs(x = 'density (g / cm^3)',
+       y = 'alcohol (% by volume)',
+       title = 'Relationship of density VS alcohol with colored quality levels')
+```
+
+可以发现酒精度和密度的负相关性。而且此处可以看到评分和酒精度、密度的有一定关系，在斜线上部评分较低。
+
+为了看清趋势，我们加上趋势线
+
+```{r echo=FALSE}
+ggplot(data = data,
+       aes(x = density, 
+           y = alcohol,
+           color = factor(quality)
+           )) + 
+  coord_cartesian(xlim = c(0.987, 1.002),
+                  ylim = c(7.5, 15)) +
+  geom_jitter(size=1) + 
+  geom_smooth(method = 'lm') +
+  scale_x_continuous(breaks = seq(0.985, 1.002, 0.002)) +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  labs(x = 'Density (mg/l)',
+       y = 'Alcohol (% by volume)',
+       title = 'Relationship of density VS alcohol with colored quality levels')
+```
+
+可以看出，不同评分的酒精度和密度的变化趋势差别很明显，值得进一步研究。
+
+Relationship of density VS chlorides
+
+```{r echo=FALSE}
+ggplot(data = data,
+       aes(x = chlorides, y = density, color = factor(quality))) + 
+  coord_cartesian(xlim = c(0, 0.3),
+                  ylim = c(0.987, 1.005)) +
+  geom_jitter() + 
+  scale_x_continuous(breaks = seq(0, 0.3, .04)) + 
+  scale_color_brewer(type="seq") +
+  theme_dark() +
+  labs(x = 'chlorides (g / dm^3)',
+       y = 'alcohol (% by volume)',
+       title = 'Relationship of density VS chlorides with colored quality levels')
+```
+
+我们看到两者存在相关性，但还有大量的离群值，可能说明其实氯化物本身并不是影响密度的直接原因。
+而且注意到评分在氯化物很高的情况中不会很高，可能说明咸味过高对评分是不利的。
+
+简单小结，我们探究了几个强相关的变量，发现free.sulfur.dioxide 和 total.sulfur.dioxide相关性虽强，但并不奇怪，由一点化学知识就知道这是显然的，并不能带给我们什么新鲜的见解，与评分也没有什么关联；alcohol 和 density负相关性也强，也可以从物理原理上得到解释，评分与两者的变化率之间有一定规律；chlorides 和 density的相关性不好解释，从散点图中可以发现规律性不强，评分与两者的变化率没有关联，但评分与氯化物含量看起来有一定关联，氯化物高的情况下评分往往更低。
+
+其他变量之间的相关性都比较弱，可以认为没有探究的必要。
+
+
+接下来主要围绕被解释变量评分quality，探究quality与其他变量的关系，挑选相关性高的几个因素：
+
+- alcohol
+- density
+- volatile.acidity
+- chlorides
+
+Relationship of quality VS alcohol
+
+```{r echo=FALSE, Bivariate_Plots}
+ggplot(data, aes(x = alcohol, y = quality)) +
+  #scale_y_log10() +
+  geom_point(alpha = 0.03,position = 'jitter') + 
+  geom_smooth(method = 'lm') +
+  #theme_dark() +
+  labs(x = 'alcohol (% by volume)',
+       y = 'quality (1/10)',
+       title = 'Relationship of quality VS alcohol')  
+```
+
+我们发现quality是定序变量，不应该用散点图，该用箱线图+散点图
+
+Boxplot of alcohol across qualities
+
+```{r echo=FALSE}
+ggplot(data = data, aes(x = factor(quality), y = alcohol)) +
+  geom_jitter(alpha = 1/10) + 
+  geom_boxplot(alpha = 1/10, color = 'blue') + 
+  stat_summary(fun.y = 'mean', geom = 'point', color = 'red') + 
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Alcohol (% by volume)',
+       title = 'Boxplot of alcohol across qualities')
+```
+
+不同酒精度的评分差异比较明显，质量评分高的情况中，高酒精度酒的比例越高。
+
+Boxplot of density across qualities
+
+```{r echo=FALSE}
+ggplot(data = data, aes(x = factor(quality), y = density)) +
+  geom_jitter(alpha = 1/10) + 
+  geom_boxplot(alpha = 1/10, color = 'blue') + 
+  stat_summary(fun.y = 'mean', geom = 'point', color = 'red') + 
+  coord_cartesian(ylim = c(0.987, 1.005)) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Density (g / cm^3)',
+       title = 'Boxplot of density across qualities')
+```
+
+类似地，只是呈现出相反的趋势，质量评分高的情况中，低密度酒的比例越高
+
+
+Boxplot of volatile.acidity across qualities
+
+```{r echo=FALSE}
+ggplot(data = data, aes(x = factor(quality), y = volatile.acidity)) +
+  geom_jitter(alpha = 1/10) + 
+  geom_boxplot(alpha = 1/10, color = 'blue') + 
+  stat_summary(fun.y = 'mean', geom = 'point', color = 'red') + 
+  coord_cartesian(ylim = c(0, 1.25)) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Volatile.acidity (mg / cm^3)',
+       title = 'Boxplot of volatile.acidity across qualities')
+```
+
+不同评分的挥发性酸之间的趋势比较一致，不过看起来挥发性酸不宜太高，会对口味造成不良影响。
+
+
+Boxplot of chlorides across qualities
+
+```{r echo=FALSE}
+ggplot(data = data, aes(x = factor(quality), y = chlorides)) +
+  geom_jitter(alpha = 1/10) + 
+  geom_boxplot(alpha = 1/10, color = 'blue') + 
+  stat_summary(fun.y = 'mean', geom = 'point', color = 'red') + 
+  coord_cartesian(ylim = c(0, 0.17)) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'chlorides (mg / dm^3)',
+       title = 'Boxplot of chlorides across qualities')
+```
+
+类似地，不同评分的氯化物看起来比较一致，而且氯化物含量也不宜太高，会对口味造成不良影响。
+
+
+# 双变量分析
+
+### 探讨你在这部分探究中观察到的一些关系。这些感兴趣的特性与数据集内其他特性有什么区别？
+质量和酒精度存在一定的正相关性，酒精度越高，评分也可能更高。明显相关性如density、vol.acid，与质量评分呈现负相关。
+
+### 你是否观察到主要特性与其他特性之间的有趣关系？
+密度与酒精含量和含糖量存在强的相关性，
+
+### 你发现最强的关系是什么？
+最强的关系是free.sulfur.dioxide 和 total.sulfur.dioxide，接下来是alcohol 和 density，chlorides 和 density。
+和质量相关最强的关系是和酒精度alcohol。其余依次是density、chlorides、volatile.acidity。
+
+
+# 多变量绘图选择
+
+我们已经发现了评分与酒精的关系，那么葡萄酒的颜色之间是否差异很大？
+```{r echo=FALSE, Multivariate_Plots}
+ggplot(data, aes(x = factor(quality), y = alcohol, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Alcohol (% by volume)',
+       title = 'Boxplot of alcohol across qualities with colored color levels')
+```
+
+为了看清趋势，我们加入趋势线，可以更清楚地发现同酒精度的情况下，红葡萄酒会获得更高的评分
+```{r echo=FALSE}
+ggplot(data, aes(x = alcohol, y = quality, color = factor(color))) + 
+  #scale_y_log10() +
+  geom_jitter(alpha = 1/10) +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  xlim(quantile(data$alcohol, 0), quantile(data$alcohol, 0.99)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Alcohol (% by volume)',
+       title = 'Relation of density across qualities with colored color levels')
+```
+
+可以发现相同酒精度的情况下红葡萄酒的评分更高。
+
+
+针对密度来说，红葡萄酒高密度的相对更多。评分高的酒中低密度的比例更高。
+```{r echo=FALSE}
+ggplot(data, aes(x = factor(quality), y = density, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  ylim(c(0.99, 1.003)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Density (g / cm^3)',
+       title = 'Boxplot of density across qualities with colored color levels')
+```
+
+为了看清趋势，我们加入趋势线，看出评分对密度的关系几乎不存在颜色差异。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = density, y = quality, color = factor(color))) + 
+  #scale_y_log10() +
+  geom_jitter(alpha = 1/10) +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  xlim(quantile(data$density, 0), quantile(data$density, 0.99)) +
+  theme_dark() +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Density (g / cm^3)',
+       y = 'Quality (score between 3 and 9)',
+       title = 'Relation of density across qualities with colored color levels')
+```
+
+看来密度越低，评分可能越高，结合之前酒精和密度的关系以及酒精和评分的关系相一致。从趋势线可以看出，红/白酒对评分对密度的变化率影响不大。不过，可以看出普遍白葡萄酒的密度更低。
+
+
+
+
+颜色对氯化物的差异是明显的，普遍地，白葡萄酒的氯化物含量相对较低。随着评分提高，氯化物含量的中位数是在缓慢下降的。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = factor(quality), y = chlorides, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  ylim(c(0, 0.13)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Chlorides (mg / dm^3)',
+       title = 'Boxplot of chlorides across qualities with colored color levels')
+```
+
+为了看清趋势，我们加入趋势线，可以更清楚地发现氯化物含量在两种颜色的酒中差异是巨大的。直线斜率的差异也受到分布的很大影响。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = chlorides, y = quality, color = factor(color))) + 
+  #scale_y_log10() +
+  geom_jitter(alpha = 1/10) +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  xlim(quantile(data$chlorides, 0), quantile(data$chlorides, 0.95)) +
+  theme_dark() +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Chlorides (mg / dm^3)',
+       y = 'Quality (score between 3 and 9)',
+       title = 'Relation of chlorides across qualities with colored color levels')
+```
+
+不同颜色的挥发性酸含量的差异是明显的
+
+```{r echo=FALSE}
+ggplot(data, aes(x = factor(quality), y = volatile.acidity, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  ylim(c(0.2, 1.0)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Volatile.acidity (mg / cm^3)',
+       title = 'Boxplot of volatile.acidity across qualities with colored color levels')
+```
+
+为了看清趋势，我们加入趋势线，差异不大，而且可能直线斜率的差异也受到分布的很大影响。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = volatile.acidity, y = quality, color = factor(color))) + 
+  #scale_y_log10() +
+  geom_jitter(alpha = 1/10) +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  xlim(quantile(data$volatile.acidity, 0), quantile(data$volatile.acidity, 0.99)) +
+  theme_dark() +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Volatile.acidity (mg / dm^3)',
+       y = 'Quality (score between 3 and 9)',
+       title = 'Relation of volatile.acidity across qualities with colored color levels')
+```
+
+
+
+不同颜色的总二氧化硫的差异是明显的，分布也比较一致。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = factor(quality), y = total.sulfur.dioxide, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  ylim(c(0, 250.0)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Total.sulfur.dioxide (mg / cm^3)',
+       title = 'Boxplot of total.sulfur.dioxide across qualities with colored color levels')
+```
+
+为了看清趋势，我们加入趋势线，可以更清楚地发现同酒精度的情况下，白葡萄酒会获得更高的评分
+#```{r echo=FALSE}
+#ggplot(data, aes(x = total.sulfur.dioxide, y = quality, color = factor(color))) + 
+#  #scale_y_log10() +
+#  geom_jitter(alpha = 1/10) +
+#  geom_smooth(method = 'lm') +
+#  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+#  xlim(quantile(data$total.sulfur.dioxide, 0), quantile(data$total.sulfur.dioxide, 0.99)) +
+#  theme_dark() +
+#  scale_color_manual(values=c("red", "white")) +
+#  labs(x = 'Total.sulfur.dioxide (mg / cm^3)',
+#       y = 'Quality (score between 3 and 9)',
+#       title = 'Relation of total.sulfur.dioxide across qualities with colored color levels')
+#```
+
+residual.sugar  
+不同颜色的剩余糖量的差异是明显的，白葡萄酒明显更高。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = factor(quality), y = residual.sugar, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  ylim(c(2, 20.0)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Residual.sugar (mg / cm^3)',
+       title = 'Boxplot of residual.sugar across qualities with colored color levels')
+```
+
+为了看清趋势，我们加入趋势线，可以更清楚地发现同剩余糖量的情况下，白葡萄酒会获得更高的评分。
+
+```{r echo=FALSE}
+ggplot(data, aes(x = residual.sugar, y = quality, color = factor(color))) + 
+  #scale_y_log10() +
+  geom_jitter(alpha = 1/10) +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  xlim(quantile(data$residual.sugar, 0), quantile(data$residual.sugar, 0.99)) +
+  theme_dark() +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Residual.sugar (mg / cm^3)',
+       y = 'Quality (score between 3 and 9)',
+       title = 'Relation of residual.sugar across qualities with colored color levels')
+```
+
+
+# 多变量分析
+
+###  探讨你在这部分探究中观察到的一些关系。通过观察感兴趣的特性，是否存在相互促进的特性？
+红酒和白葡萄酒在质量和酒精含量的关系上表现相似。相同的酒精含量下，白葡萄酒的评分更高。其他的几种风味物质（chlorides、volatile_acidity、total.sulfur.dioxide）的影响不大。
+
+### 这些特性之间是否存在有趣或惊人的联系呢？
+
+
+### 选项：你是否创建过数据集的任何模型？讨论你模型的优缺点。
+
+------
+
+# 定稿图与总结
+
+### 绘图一
+
+```{r echo=FALSE}
+ggplot(aes(quality, fill = color), data = data) +
+  geom_bar(alpha = 0.5,position = 'dodge') + 
+  scale_y_log10() +
+  ggtitle("quality scores")
+```
+
+### 描述一  
+葡萄酒质量的分布满足对数正态分布。
+
+### 绘图二
+
+```{r   echo=FALSE}
+tmp_data <- subset(data, select = -c(X))
+ggcorr(tmp_data)
+```
+
+### 描述二
+
+酒精含量是对葡萄酒质量评分影响最大的一个因素，R^2 = 0.436，酒精含量越高，葡萄酒质量一般越高。
+
+### 绘图三
+
+```{r echo=FALSE}
+ggplot(data, aes(x = factor(quality), y = alcohol, color = factor(color))) + 
+  geom_jitter(alpha = 1/10) +
+  geom_boxplot(alpha = 1/10, color = 'blue') +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'alcohol (% by volume)',
+       title = 'Boxplot of alcohol across qualities with colored color levels')
+```
+
+
+### 描述三  
+不同的酒的品种（红、白）会对酒精和酒质量的关系产生明显的影响。同样的酒精含量下，白葡萄酒的评分往往更高。
+固定酒精含量，相同风味物质可能对应不同的质量评分，方差在不同酒精含量下相近。
+
+
+### 绘图四
+
+```{r echo=FALSE}
+ggplot(data, aes(x = alcohol, y = quality, color = factor(color))) + 
+  #scale_y_log10() +
+  geom_jitter(alpha = 1/10) +
+  geom_smooth(method = 'lm') +
+  scale_color_brewer(type="seq", guide = guide_legend(title='Quality levels')) +
+  theme_dark() +
+  xlim(quantile(data$alcohol, 0), quantile(data$alcohol, 0.99)) +
+  scale_color_manual(values=c("red", "white")) +
+  labs(x = 'Quality (score between 3 and 9)',
+       y = 'Density (% by volume)',
+       title = 'Relation of density across qualities with colored color levels')
+```
+
+### 描述四  
+酒的颜色会产生很大的影响，可以更清楚地发现同酒精度的情况下，白葡萄酒会获得更高的评分。
+
+总的来说，我们探究了1,599种葡萄酒的酒精度和风味物质对评分的影响，其中酒精是最重要的影响因素，相同酒精含量，不同风味物质对酒的质量评分的影响较小，但很关键，我们应该建立更复杂的模型来预测出什么样的配比是更能得到高评分的，单独的变量的更改都是不足的。
+
+------
+
+# 反思  
+EDA过程中，首先提出问题：什么因素才是影响葡萄酒的主要因素？  
+先探索单变量，特别注意离群值多的几个变量，并依次探索剩余的单变量分布特点。  
+再根据我们的兴趣——评分的影响因素，探索了几个和质量评分相关性高的因素，依次研究了质量评分和它们每个之间的相关性，并发现了几个解释变量之间的相关性。  
+最后在多变量绘图部分，我们主要区分了白/红葡萄酒不同酒的其他解释变量对口味的影响特点。
+
+在上述操作的过程中，对过程影响很大的是：
+
+1. 区别类别变量和连续变量，比如跨类别变量适合使用箱型图，连续变量适合使用散点图。
+2. 必要的时候可以通过在散点图中添加趋势线的方法来看清趋势，和比较变量
